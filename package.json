@@ -1,0 +1,17 @@
+{
+  "name": "3js-engine-simulator",
+  "version": "1.0.0",
+  "description": "A versatile real-time 3D engine physics simulator using Three.js",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

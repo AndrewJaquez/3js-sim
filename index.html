@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Engine Physics Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .view-container {
+            flex: 1;
+            position: relative;
+            border: 2px solid #333;
+            margin: 2px;
+        }
+        
+        .view-label {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 10;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #0a0a0a;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            min-width: 300px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input[type="number"] {
+            width: 80px;
+            padding: 2px 5px;
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 3px;
+        }
+        
+        .control-group select {
+            width: 100%;
+            padding: 5px;
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 3px;
+        }
+        
+        .control-group button {
+            padding: 8px 15px;
+            background: #007acc;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        .control-group button:hover {
+            background: #005a99;
+        }
+        
+        .control-group button.active {
+            background: #28a745;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .value-display {
+            display: inline-block;
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div class="view-container" id="sideViewContainer">
+            <div class="view-label">Side View</div>
+            <canvas id="sideCanvas"></canvas>
+        </div>
+        <div class="view-container" id="topViewContainer">
+            <div class="view-label">Top View</div>
+            <canvas id="topCanvas"></canvas>
+        </div>
+        
+        <div id="controls">
+            <h3>Engine Controls</h3>
+            
+            <div class="control-group">
+                <label>Engine Type:</label>
+                <select id="engineType">
+                    <option value="inline4">Inline 4-Cylinder</option>
+                    <option value="v6">V6 Engine</option>
+                    <option value="v8" disabled>V8 (Coming Soon)</option>
+                    <option value="rotary" disabled>Rotary (Coming Soon)</option>
+                    <option value="electric" disabled>Electric (Coming Soon)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>RPM: <span class="value-display" id="rpmDisplay">800</span></label>
+                <input type="range" id="rpmSlider" min="0" max="8000" value="800" step="100">
+            </div>
+            
+            <div class="control-group">
+                <label>Throttle: <span class="value-display" id="throttleDisplay">25</span>%</label>
+                <input type="range" id="throttleSlider" min="0" max="100" value="25" step="5">
+            </div>
+            
+            <div class="control-group">
+                <label>Air-Fuel Ratio: <span class="value-display" id="afrDisplay">14.7</span>:1</label>
+                <input type="range" id="afrSlider" min="10" max="20" value="14.7" step="0.1">
+            </div>
+            
+            <div class="control-group">
+                <label>Ignition Timing: <span class="value-display" id="timingDisplay">15</span>° BTDC</label>
+                <input type="range" id="timingSlider" min="0" max="40" value="15" step="1">
+            </div>
+            
+            <div class="control-group">
+                <label>Boost Pressure: <span class="value-display" id="boostDisplay">0.0</span> PSI</label>
+                <input type="range" id="boostSlider" min="0" max="30" value="0" step="0.5">
+            </div>
+            
+            <div class="control-group">
+                <button id="cutawayToggle">Toggle Cutaway</button>
+                <button id="exhaustToggle">Toggle Exhaust</button>
+                <button id="labelsToggle" class="active">Toggle Labels</button>
+            </div>
+            
+            <div class="control-group">
+                <label>View Mode:</label>
+                <select id="viewMode">
+                    <option value="both">Both Views</option>
+                    <option value="side">Side View Only</option>
+                    <option value="top">Top View Only</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="info">
+            <div><strong>Engine Status:</strong></div>
+            <div>Power: <span id="powerOutput">45 HP</span></div>
+            <div>Torque: <span id="torqueOutput">120 lb-ft</span></div>
+            <div>Efficiency: <span id="efficiency">28%</span></div>
+            <div>Temperature: <span id="temperature">195°F</span></div>
+            <div><br><strong>Views:</strong></div>
+            <div>Side: Engine cross-section</div>
+            <div>Top: Cylinder arrangement</div>
+        </div>
+    </div>
+    
+    <script type="module" src="./src/main2d.js"></script>
+</body>
+</html>
