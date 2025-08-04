@@ -14,6 +14,7 @@ export class Inline4Engine2D extends BaseEngine2D {
         this.pistonPositions = [];
         this.valvePositions = [];
         this.combustionIntensities = [];
+        this.camshaftConfig = 'dohc';
         
         this.setupEngine();
     }
@@ -98,7 +99,7 @@ export class Inline4Engine2D extends BaseEngine2D {
         
         this.drawEngineBlock(this.sideCtx, center.x, baseY);
         this.drawCrankshaft(this.sideCtx, center.x, crankCenterY);
-        this.drawCamshaft(this.sideCtx, center.x, baseY - 120);
+        this.drawCamshaft(this.sideCtx, center.x, baseY - this.cylinderHeight - 40);
         
         for (let i = 0; i < this.cylinderCount; i++) {
             const x = center.x + (i - 1.5) * this.cylinderSpacing;
@@ -114,7 +115,8 @@ export class Inline4Engine2D extends BaseEngine2D {
         
         if (this.labelsVisible) {
             this.drawLabel(this.sideCtx, 'Crankshaft', center.x, crankCenterY + 40);
-            this.drawLabel(this.sideCtx, 'Camshaft', center.x, baseY - 140);
+            const camshaftLabel = this.camshaftConfig === 'sohc' ? 'SOHC Camshaft' : 'DOHC Camshafts';
+            this.drawLabel(this.sideCtx, camshaftLabel, center.x, baseY - this.cylinderHeight - 60);
         }
     }
     
@@ -209,14 +211,36 @@ export class Inline4Engine2D extends BaseEngine2D {
     }
     
     drawCamshaft(ctx, centerX, centerY) {
-        const camWidth = this.cylinderSpacing * 3.5;
-        this.drawRect(ctx, centerX, centerY, camWidth, 15, this.colors.steel, true);
-        
-        for (let i = 0; i < this.cylinderCount; i++) {
-            const x = centerX + (i - 1.5) * this.cylinderSpacing;
+        if (this.camshaftConfig === 'sohc') {
+            // Single overhead cam
+            const camWidth = this.cylinderSpacing * 3.5;
+            this.drawRect(ctx, centerX, centerY, camWidth, 15, this.colors.steel, true);
             
-            this.drawCircle(ctx, x - 15, centerY, 20, this.colors.steel, true);
-            this.drawCircle(ctx, x + 15, centerY, 20, this.colors.steel, true);
+            for (let i = 0; i < this.cylinderCount; i++) {
+                const x = centerX + (i - 1.5) * this.cylinderSpacing;
+                
+                // Single cam lobe per cylinder (operates both valves via rockers)
+                this.drawCircle(ctx, x, centerY, 20, this.colors.steel, true);
+            }
+        } else {
+            // Dual overhead cam (DOHC)
+            const camWidth = this.cylinderSpacing * 3.5;
+            const intakeCamY = centerY - 15;
+            const exhaustCamY = centerY + 15;
+            
+            // Intake camshaft
+            this.drawRect(ctx, centerX, intakeCamY, camWidth, 12, this.colors.aluminum, true);
+            // Exhaust camshaft
+            this.drawRect(ctx, centerX, exhaustCamY, camWidth, 12, this.colors.exhaust, true);
+            
+            for (let i = 0; i < this.cylinderCount; i++) {
+                const x = centerX + (i - 1.5) * this.cylinderSpacing;
+                
+                // Intake cam lobes
+                this.drawCircle(ctx, x, intakeCamY, 18, this.colors.aluminum, true);
+                // Exhaust cam lobes
+                this.drawCircle(ctx, x, exhaustCamY, 18, this.colors.exhaust, true);
+            }
         }
     }
     
@@ -251,5 +275,9 @@ export class Inline4Engine2D extends BaseEngine2D {
     
     getFiringOrder() {
         return [1, 3, 4, 2];
+    }
+    
+    setCamshaftConfig(config) {
+        this.camshaftConfig = config;
     }
 }

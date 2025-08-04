@@ -22,15 +22,38 @@
             position: relative;
             width: 100vw;
             height: 100vh;
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 4px;
+            padding: 4px;
         }
         
         .view-container {
-            flex: 1;
             position: relative;
             border: 2px solid #333;
-            margin: 2px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #sideViewContainer {
+            grid-column: 1;
+            grid-row: 1;
+        }
+        
+        #topViewContainer {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        #turboContainer {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        #camshaftContainer {
+            grid-column: 2;
+            grid-row: 2;
         }
         
         .view-label {
@@ -146,6 +169,14 @@
             <div class="view-label">Top View</div>
             <canvas id="topCanvas"></canvas>
         </div>
+        <div class="view-container" id="turboContainer">
+            <div class="view-label">Turbocharger</div>
+            <canvas id="turboCanvas"></canvas>
+        </div>
+        <div class="view-container" id="camshaftContainer">
+            <div class="view-label">Camshaft Detail</div>
+            <canvas id="camshaftCanvas"></canvas>
+        </div>
         
         <div id="controls">
             <h3>Engine Controls</h3>
@@ -190,6 +221,19 @@
                 <button id="cutawayToggle">Toggle Cutaway</button>
                 <button id="exhaustToggle">Toggle Exhaust</button>
                 <button id="labelsToggle" class="active">Toggle Labels</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Camshaft Configuration:</label>
+                <select id="camshaftConfig">
+                    <option value="sohc">SOHC (Single Overhead Cam)</option>
+                    <option value="dohc">DOHC (Dual Overhead Cam)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <button id="turboToggle">Enable Turbocharger</button>
+                <button id="camshaftDetailToggle" class="active">Show Camshaft Detail</button>
             </div>
             
             <div class="control-group">

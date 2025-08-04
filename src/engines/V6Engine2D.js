@@ -15,6 +15,7 @@ export class V6Engine2D extends BaseEngine2D {
         this.pistonPositions = [];
         this.valvePositions = [];
         this.combustionIntensities = [];
+        this.camshaftConfig = 'dohc';
         
         this.setupEngine();
     }
@@ -101,7 +102,7 @@ export class V6Engine2D extends BaseEngine2D {
         
         this.drawEngineBlock(this.sideCtx, center.x, baseY);
         this.drawCrankshaft(this.sideCtx, center.x, crankCenterY);
-        this.drawCamshafts(this.sideCtx, center.x, baseY - 100);
+        this.drawCamshafts(this.sideCtx, center.x, baseY - this.cylinderHeight - 50);
         
         for (let i = 0; i < 3; i++) {
             const x = center.x + (i - 1) * this.cylinderSpacing;
@@ -329,5 +330,9 @@ export class V6Engine2D extends BaseEngine2D {
     
     getFiringOrder() {
         return [1, 4, 2, 5, 3, 6];
+    }
+    
+    setCamshaftConfig(config) {
+        this.camshaftConfig = config;
     }
 }

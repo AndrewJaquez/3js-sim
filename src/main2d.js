@@ -2,20 +2,29 @@ import { Inline4Engine2D } from './engines/Inline4Engine2D.js';
 import { V6Engine2D } from './engines/V6Engine2D.js';
 import { ParticleSystem2D } from './effects/ParticleSystem2D.js';
 import { EngineControls } from './utils/EngineControls.js';
+import { Turbocharger2D } from './components/Turbocharger2D.js';
+import { CamshaftDetail2D } from './components/CamshaftDetail2D.js';
 
 class EngineSimulator2D {
     constructor() {
         this.sideCanvas = null;
         this.topCanvas = null;
+        this.turboCanvas = null;
+        this.camshaftCanvas = null;
         this.sideCtx = null;
         this.topCtx = null;
+        this.turboCtx = null;
+        this.camshaftCtx = null;
         
         this.currentEngine = null;
         this.exhaustSystem = null;
+        this.turbocharger = null;
+        this.camshaftDetail = null;
         this.engineControls = null;
         
         this.animationId = null;
         this.lastTime = 0;
+        this.crankAngle = 0;
         
         this.settings = {
             rpm: 800,
@@ -26,7 +35,10 @@ class EngineSimulator2D {
             cutawayMode: false,
             exhaustVisible: false,
             labelsVisible: true,
-            viewMode: 'both'
+            viewMode: 'both',
+            turboEnabled: false,
+            camshaftConfig: 'dohc',
+            camshaftDetailVisible: true
         };
         
         this.init();
@@ -37,16 +49,20 @@ class EngineSimulator2D {
     init() {
         this.sideCanvas = document.getElementById('sideCanvas');
         this.topCanvas = document.getElementById('topCanvas');
+        this.turboCanvas = document.getElementById('turboCanvas');
+        this.camshaftCanvas = document.getElementById('camshaftCanvas');
         
-        if (!this.sideCanvas || !this.topCanvas) {
+        if (!this.sideCanvas || !this.topCanvas || !this.turboCanvas || !this.camshaftCanvas) {
             console.error('Canvas elements not found');
             return;
         }
         
         this.sideCtx = this.sideCanvas.getContext('2d');
         this.topCtx = this.topCanvas.getContext('2d');
+        this.turboCtx = this.turboCanvas.getContext('2d');
+        this.camshaftCtx = this.camshaftCanvas.getContext('2d');
         
-        if (!this.sideCtx || !this.topCtx) {
+        if (!this.sideCtx || !this.topCtx || !this.turboCtx || !this.camshaftCtx) {
             console.error('Could not get 2D context');
             return;
         }
@@ -89,32 +105,33 @@ class EngineSimulator2D {
     }
     
     resizeCanvases() {
-        const sideContainer = document.getElementById('sideViewContainer');
-        const topContainer = document.getElementById('topViewContainer');
+        const containers = [
+            { element: document.getElementById('sideViewContainer'), canvas: this.sideCanvas, name: 'Side' },
+            { element: document.getElementById('topViewContainer'), canvas: this.topCanvas, name: 'Top' },
+            { element: document.getElementById('turboContainer'), canvas: this.turboCanvas, name: 'Turbo' },
+            { element: document.getElementById('camshaftContainer'), canvas: this.camshaftCanvas, name: 'Camshaft' }
+        ];
         
-        if (sideContainer && this.sideCanvas) {
-            const rect = sideContainer.getBoundingClientRect();
-            this.sideCanvas.width = Math.max(rect.width, 100);
-            this.sideCanvas.height = Math.max(rect.height, 100);
-            console.log('Side canvas size:', this.sideCanvas.width, 'x', this.sideCanvas.height);
-        }
-        
-        if (topContainer && this.topCanvas) {
-            const topRect = topContainer.getBoundingClientRect();
-            this.topCanvas.width = Math.max(topRect.width, 100);
-            this.topCanvas.height = Math.max(topRect.height, 100);
-            console.log('Top canvas size:', this.topCanvas.width, 'x', this.topCanvas.height);
-        }
+        containers.forEach(({ element, canvas, name }) => {
+            if (element && canvas) {
+                const rect = element.getBoundingClientRect();
+                canvas.width = Math.max(rect.width - 4, 100); // Account for border
+                canvas.height = Math.max(rect.height - 4, 100);
+                console.log(`${name} canvas size:`, canvas.width, 'x', canvas.height);
+            }
+        });
         
         this.setupCanvasStyles();
     }
     
     setupCanvasStyles() {
-        [this.sideCtx, this.topCtx].forEach(ctx => {
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
+        [this.sideCtx, this.topCtx, this.turboCtx, this.camshaftCtx].forEach(ctx => {
+            if (ctx) {
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+            }
         });
     }
     
@@ -144,6 +161,16 @@ class EngineSimulator2D {
                 this.exhaustSystem = new ParticleSystem2D(this.sideCtx, this.topCtx);
             }
             
+            if (!this.turbocharger) {
+                this.turbocharger = new Turbocharger2D(this.turboCtx);
+            }
+            
+            if (!this.camshaftDetail) {
+                this.camshaftDetail = new CamshaftDetail2D(this.camshaftCtx);
+                this.camshaftDetail.setCylinderCount(this.currentEngine.cylinderCount || 4);
+                this.camshaftDetail.setConfiguration(this.settings.camshaftConfig);
+            }
+            
             if (!this.engineControls) {
                 this.engineControls = new EngineControls();
             }
@@ -171,7 +198,10 @@ class EngineSimulator2D {
             cutawayToggle: document.getElementById('cutawayToggle'),
             exhaustToggle: document.getElementById('exhaustToggle'),
             labelsToggle: document.getElementById('labelsToggle'),
-            viewMode: document.getElementById('viewMode')
+            viewMode: document.getElementById('viewMode'),
+            camshaftConfig: document.getElementById('camshaftConfig'),
+            turboToggle: document.getElementById('turboToggle'),
+            camshaftDetailToggle: document.getElementById('camshaftDetailToggle')
         };
         
         elements.rpmSlider.addEventListener('input', (e) => {
@@ -236,6 +266,33 @@ class EngineSimulator2D {
             this.settings.viewMode = e.target.value;
             this.updateViewMode();
         });
+        
+        elements.camshaftConfig.addEventListener('change', (e) => {
+            this.settings.camshaftConfig = e.target.value;
+            if (this.camshaftDetail) {
+                this.camshaftDetail.setConfiguration(this.settings.camshaftConfig);
+            }
+            if (this.currentEngine) {
+                this.currentEngine.setCamshaftConfig(this.settings.camshaftConfig);
+            }
+        });
+        
+        elements.turboToggle.addEventListener('click', () => {
+            this.settings.turboEnabled = !this.settings.turboEnabled;
+            elements.turboToggle.classList.toggle('active', this.settings.turboEnabled);
+            elements.turboToggle.textContent = this.settings.turboEnabled ? 'Disable Turbocharger' : 'Enable Turbocharger';
+            if (this.turbocharger) {
+                this.turbocharger.setEnabled(this.settings.turboEnabled);
+            }
+        });
+        
+        elements.camshaftDetailToggle.addEventListener('click', () => {
+            this.settings.camshaftDetailVisible = !this.settings.camshaftDetailVisible;
+            elements.camshaftDetailToggle.classList.toggle('active', this.settings.camshaftDetailVisible);
+            if (this.camshaftDetail) {
+                this.camshaftDetail.setVisible(this.settings.camshaftDetailVisible);
+            }
+        });
     }
     
     updateViewMode() {
@@ -268,14 +325,23 @@ class EngineSimulator2D {
     updateEngine() {
         if (!this.currentEngine) return;
         
-        this.currentEngine.updateSettings(this.settings);
+        // Update boost pressure from turbocharger if enabled
+        const adjustedSettings = { ...this.settings };
+        if (this.turbocharger && this.settings.turboEnabled) {
+            adjustedSettings.boost = this.turbocharger.getBoostPressure();
+        }
         
-        const performance = this.engineControls.calculatePerformance(this.settings);
+        this.currentEngine.updateSettings(adjustedSettings);
+        
+        const performance = this.engineControls.calculatePerformance(adjustedSettings);
         
         document.getElementById('powerOutput').textContent = `${performance.power} HP`;
         document.getElementById('torqueOutput').textContent = `${performance.torque} lb-ft`;
         document.getElementById('efficiency').textContent = `${performance.efficiency}%`;
         document.getElementById('temperature').textContent = `${performance.temperature}°F`;
+        
+        // Update boost display
+        document.getElementById('boostDisplay').textContent = adjustedSettings.boost.toFixed(1);
     }
     
     animate(currentTime = 0) {
@@ -292,6 +358,8 @@ class EngineSimulator2D {
             try {
                 this.currentEngine.update(deltaTime);
                 this.currentEngine.render();
+                // Track crankshaft angle from engine
+                this.crankAngle = this.currentEngine.crankAngle || 0;
             } catch (error) {
                 console.error('Error in engine update/render:', error);
                 // Fallback rendering
@@ -307,6 +375,30 @@ class EngineSimulator2D {
                 this.exhaustSystem.render();
             } catch (error) {
                 console.error('Error in exhaust system:', error);
+            }
+        }
+        
+        if (this.turbocharger) {
+            try {
+                // Update boost pressure based on turbo
+                const adjustedSettings = { ...this.settings };
+                if (this.settings.turboEnabled) {
+                    adjustedSettings.boost = this.turbocharger.getBoostPressure();
+                }
+                
+                this.turbocharger.update(deltaTime, adjustedSettings);
+                this.turbocharger.render();
+            } catch (error) {
+                console.error('Error in turbocharger system:', error);
+            }
+        }
+        
+        if (this.camshaftDetail && this.settings.camshaftDetailVisible) {
+            try {
+                this.camshaftDetail.update(deltaTime, this.crankAngle || 0, this.settings);
+                this.camshaftDetail.render();
+            } catch (error) {
+                console.error('Error in camshaft detail:', error);
             }
         }
     }
